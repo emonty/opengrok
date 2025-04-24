@@ -1,10 +1,10 @@
 # Copyright (c) 2018, 2025 Oracle and/or its affiliates. All rights reserved.
 # Portions Copyright (c) 2020, Chris Fraire <cfraire@me.com>.
 
-FROM ubuntu:jammy AS build
+FROM tomcat:10.1.40-jdk21 as build
 
 # hadolint ignore=DL3008
-RUN apt-get update && apt-get install --no-install-recommends -y openjdk-21-jdk python3 python3-venv && \
+RUN apt-get update && apt-get install --no-install-recommends -y python3 python3-venv && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -46,31 +46,19 @@ LABEL maintainer="https://github.com/oracle/opengrok"
 LABEL org.opencontainers.image.source="https://github.com/oracle/opengrok"
 LABEL org.opencontainers.image.description="OpenGrok code search"
 
-# Add Perforce apt source.
-# hadolint ignore=DL3008,DL3009
-RUN apt-get update && \
-    apt-get install --no-install-recommends -y gnupg2
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-# hadolint ignore=DL3059
-RUN curl -sS https://package.perforce.com/perforce.pubkey | gpg --dearmor > /etc/apt/trusted.gpg.d/perforce.gpg
-# hadolint ignore=DL3059
-RUN echo 'deb https://package.perforce.com/apt/ubuntu jammy release' > /etc/apt/sources.list.d/perforce.list
-
 # install dependencies and Python tools
 # hadolint ignore=DL3008,DL3009
 RUN apt-get update && \
-    apt-get install --no-install-recommends -y git subversion mercurial cvs cssc bzr rcs rcs-blame \
+    apt-get install --no-install-recommends -y git \
     unzip python3 python3-pip \
-    python3-venv python3-setuptools openssh-client libyaml-dev
-
-# hadolint ignore=DL3008,DL3059
-RUN architecture=$(uname -m) && if [[ "$architecture" == "aarch64" ]]; then \
-        echo "aarch64: do not install helix-p4d."; else \
-        apt-get install --no-install-recommends -y helix-p4d || echo "Failed to install Perforce"; fi
+    python3-venv python3-setuptools openssh-client libyaml-dev && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # compile and install universal-ctags
 # hadolint ignore=DL3003,DL3008
-RUN apt-get install --no-install-recommends -y pkg-config automake build-essential libxml2-dev && \
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y pkg-config automake build-essential libxml2-dev && \
     git clone https://github.com/universal-ctags/ctags /root/ctags && \
     cd /root/ctags && ./autogen.sh && ./configure && make && make install && \
     apt-get remove -y automake build-essential && \
